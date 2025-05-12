@@ -78,11 +78,8 @@ jobs:
     - name: Prepare AnyKernel3 for Floral
       working-directory: ${{ env.ANYKERNEL_DIR }}
       run: |
-        # 清理默认配置
         rm -f anykernel.sh
-        
-        # 创建 AnyKernel 配置文件
-        cat > anykernel.sh << 'EOF'
+        cat > anykernel.sh << EOF
 #!/bin/bash
 # AnyKernel3 Ramdisk Mod Script
 # osm0sis @ xda-developers
@@ -116,8 +113,6 @@ copy_file "$KERNEL_DIR/arch/arm64/boot/Image.gz" "$BOOTIMG";
 
 write_boot;
 EOF
-
-        # 确保脚本可执行
         chmod +x anykernel.sh
 
     - name: Create AnyKernel3 Zip
