@@ -8,6 +8,7 @@ env:
   CLANG_VERSION: 13
   ARCH: arm64
   CROSS_COMPILE: aarch64-linux-android-
+  CROSS_COMPILE_ARM32: arm-linux-gnueabi- 
   CLANG_TRIPLE: aarch64-linux-gnu-
   BRANCH: lineage-22.2
   DEVICE: floral
@@ -39,7 +40,10 @@ jobs:
           bc \
           curl \
           libelf-dev \
-          binutils-aarch64-linux-gnu
+          binutils-aarch64-linux-gnu \
+          binutils-arm-linux-gnueabi \
+          gcc-arm-linux-gnueabi \
+          zip
 
     - name: Install Clang 13
       run: |
@@ -62,10 +66,11 @@ jobs:
       working-directory: ${{ env.KERNEL_DIR }}
       run: |
         make -j$(nproc) \
-             ARCH=${{ env.ARCH }} \
-             CC=clang-13 \
-             CLANG_TRIPLE=${{ env.CLANG_TRIPLE }} \
-             CROSS_COMPILE=${{ env.CROSS_COMPILE }}
+     ARCH=${{ env.ARCH }} \
+     CC=clang-13 \
+     CLANG_TRIPLE=${{ env.CLANG_TRIPLE }} \
+     CROSS_COMPILE=${{ env.CROSS_COMPILE }} \
+     CROSS_COMPILE_ARM32=${{ env.CROSS_COMPILE_ARM32 }}
 
     - name: Prepare Kernel Modules
       working-directory: ${{ env.KERNEL_DIR }}
