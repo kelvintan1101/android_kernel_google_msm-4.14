@@ -1,11 +1,10 @@
-name: Floral Kernel Build with KernelSU and AnyKernel
+name: Floral Kernel Build with KernelSU
 
 on:
   workflow_dispatch:
 
 env:
   KERNEL_DIR: ${{ github.workspace }}/kernel
-  ANYKERNEL_DIR: ${{ github.workspace }}/AnyKernel3
   CLANG_VERSION: 13
   ARCH: arm64
   CROSS_COMPILE: aarch64-linux-android-
@@ -24,12 +23,6 @@ jobs:
         path: ${{ env.KERNEL_DIR }}
         ref: ${{ env.BRANCH }}
 
-    - name: Checkout AnyKernel3
-      uses: actions/checkout@v4
-      with:
-        repository: osm0sis/AnyKernel3
-        path: ${{ env.ANYKERNEL_DIR }}
-
     - name: Setup Build Environment
       run: |
         sudo apt-get update
@@ -46,8 +39,7 @@ jobs:
           bc \
           curl \
           libelf-dev \
-          binutils-aarch64-linux-gnu \
-          zip
+          binutils-aarch64-linux-gnu
 
     - name: Install Clang 13
       run: |
@@ -59,7 +51,7 @@ jobs:
     - name: Install KernelSU
       working-directory: ${{ env.KERNEL_DIR }}
       run: |
-        curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s susfs-v1.5.5
+        curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
 
     - name: Prepare Kernel Configuration
       working-directory: ${{ env.KERNEL_DIR }}
@@ -75,64 +67,31 @@ jobs:
              CLANG_TRIPLE=${{ env.CLANG_TRIPLE }} \
              CROSS_COMPILE=${{ env.CROSS_COMPILE }}
 
-    - name: Prepare AnyKernel3 for Floral
-      working-directory: ${{ env.ANYKERNEL_DIR }}
+    - name: Prepare Kernel Modules
+      working-directory: ${{ env.KERNEL_DIR }}
       run: |
-        rm -f anykernel.sh
-        cat > anykernel.sh << EOF
-#!/bin/bash
-# AnyKernel3 Ramdisk Mod Script
-# osm0sis @ xda-developers
-
-properties() { '
-kernel.string=KernelSU SUSFS Kernel for Floral by kelvintan
-do.devicecheck=1
-do.modules=0
-do.systemless=1
-do.cleanup=1
-do.cleanuponabort=0
-device.name1=coral
-device.name2=flame
-supported.versions=
-supported.patchlevels=
-'; }
-
-# 在这里放置内核镜像和设备树
-block=/dev/block/bootdevice/by-name/boot;
-is_slot_device=1;
-ramdisk_compression=auto;
-
-. tools/ak3-core.sh
-
-# 替换内核镜像
-dump_boot;
-copy_file "$KERNEL_DIR/arch/arm64/boot/Image.gz" "$BOOTIMG";
-
-# 如果需要，可以添加设备树
-# copy_file "$KERNEL_DIR/arch/arm64/boot/dtbo.img" "$BOOTIMG";
-
-write_boot;
-EOF
-        chmod +x anykernel.sh
-
-    - name: Create AnyKernel3 Zip
-      working-directory: ${{ env.ANYKERNEL_DIR }}
-      run: |
-        zip -r9 ${{ github.workspace }}/Floral-KernelSU-SUSFS-${{ env.BRANCH }}.zip . -i '*'
+        mkdir -p modules
+        make ARCH=${{ env.ARCH }} \
+             CC=clang-13 \
+             CLANG_TRIPLE=${{ env.CLANG_TRIPLE }} \
+             CROSS_COMPILE=${{ env.CROSS_COMPILE }} \
+             INSTALL_MOD_PATH=modules \
+             INSTALL_MOD_STRIP=1 \
+             modules_install
 
     - name: Upload Kernel Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: floral-kernelsu-susfs-anykernel
+        name: floral-kernel-lineage-22.2
         path: |
-          ${{ github.workspace }}/Floral-KernelSU-SUSFS-${{ env.BRANCH }}.zip
           ${{ env.KERNEL_DIR }}/arch/arm64/boot/Image.gz
           ${{ env.KERNEL_DIR }}/arch/arm64/boot/dtbo.img
+          ${{ env.KERNEL_DIR }}/modules/lib/modules/*/kernel
 
     - name: Display Build Information
       working-directory: ${{ env.KERNEL_DIR }}
       run: |
         echo "Kernel build completed!"
         ls -l arch/arm64/boot/
-        echo "AnyKernel ZIP created:"
-        ls -l ${{ github.workspace }}/Floral-KernelSU-SUSFS-${{ env.BRANCH }}.zip
+        echo "Kernel modules:"
+        ls -l modules/lib/modules/
